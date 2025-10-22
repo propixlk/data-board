@@ -147,6 +147,10 @@
                     <button id="theme-toggle-btn" class="btn btn-outline-secondary">
                         <i class="bi"></i>
                     </button>
+                    <!-- NEW: Renew Plan Button -->
+                    <button id="renew-plan-btn" class="btn btn-outline-success">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Renew Plan
+                    </button>
                     <button id="reset-button" class="btn btn-danger">
                         <i class="bi bi-trash-fill me-1"></i> Delete Plan
                     </button>
@@ -189,7 +193,7 @@
                 <div class="col-lg-3 col-md-6">
                     <div class="card h-100 shadow-sm border-0 rounded-4 animated-card" style="animation-delay: 400ms;">
                         <div class="card-body">
-                             <h5 class="card-title text-body-secondary fw-semibold">Avg. Daily Usage <i class="bi bi-info-circle" data-bs-toggle="tooltip" title="Your average consumption per day in this cycle"></i></h5>
+                             <h5 class="card-title text-body-secondary fw-semibold">Avg. Daily Usage <i class="bi bi-info-circle" data-bs-toggle="tooltip" title="Your average consumption per day, based on the last 90 days of history."></i></h5>
                             <p class="metric-value mb-0"><span id="avg-daily-usage">--</span> <small id="avg-daily-usage-unit" class="text-body-secondary fw-semibold metric-unit"></small></p>
                         </div>
                     </div>
@@ -214,7 +218,7 @@
                 <div class="col-lg-3 col-md-6">
                     <div class="card h-100 shadow-sm border-0 rounded-4 bg-primary-subtle border-primary animated-card" style="animation-delay: 700ms;">
                         <div class="card-body">
-                            <h5 class="card-title text-body-secondary fw-semibold">Data Depletion Forecast <i class="bi bi-info-circle" data-bs-toggle="tooltip" title="Projected date your data will run out based on average usage."></i></h5>
+                            <h5 class="card-title text-body-secondary fw-semibold">Data Depletion Forecast <i class="bi bi-info-circle" data-bs-toggle="tooltip" title="Projected date your data will run out based on your 90-day average usage."></i></h5>
                             <p id="forecast-value" class="metric-value mb-0" style="font-size: 1.9rem;">--</p>
                         </div>
                     </div>
@@ -324,6 +328,26 @@
         </div>
     </div>
     
+    <!-- NEW: Reusable Confirmation/Alert Modal -->
+    <div class="modal fade" id="action-modal" tabindex="-1" aria-labelledby="action-modal-label" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h1 class="modal-title fs-5" id="action-modal-label">Confirmation</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Using <pre> to preserve newlines in the confirm message -->
+                    <p id="action-modal-body" style="white-space: pre-wrap;"></p>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="action-modal-cancel">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="action-modal-confirm">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Automatic Toast Alert Container -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
         <div id="data-alert-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
@@ -373,6 +397,14 @@
             const addNewPlanBtn = document.getElementById('add-new-plan-btn');
             const dashboardTitle = document.getElementById('dashboard-title');
             const reportsModalEl = document.getElementById('reports-modal');
+            const renewPlanBtn = document.getElementById('renew-plan-btn'); // NEW
+
+            // NEW: Modal Selectors
+            const actionModalEl = document.getElementById('action-modal');
+            let actionModalLabel = document.getElementById('action-modal-label');
+            let actionModalBody = document.getElementById('action-modal-body');
+            let actionModalConfirm = document.getElementById('action-modal-confirm');
+            let actionModalCancel = document.getElementById('action-modal-cancel');
             
             // Metric Elements
             const daysLeftEl = document.getElementById('days-left');
@@ -403,6 +435,9 @@
             let usageTrendChart, burnRateChart, yearlyUsageChart;
             let daysLeftAnim, dataLeftAnim, dailyAllowanceAnim, avgDailyUsageAnim, highestUsageAnim, lowestUsageAnim; // NEW
             let dataAlertToastInstance;
+            let actionModalInstance; // NEW
+            let currentConfirmCallback = null; // NEW
+
             const GB_TO_MB = 1024;
             const ONE_DAY_MS = 1000 * 60 * 60 * 24;
             // NEW: Automatic alert levels
@@ -499,12 +534,110 @@
                   return new bootstrap.Tooltip(tooltipTriggerEl)
                 });
                 dataAlertToastInstance = new bootstrap.Toast(document.getElementById('data-alert-toast'));
+                actionModalInstance = new bootstrap.Modal(actionModalEl); // NEW
                 reportsModalEl.addEventListener('shown.bs.modal', renderReports);
             }
+
+            // --- NEW: Custom Modal Functions ---
+
+            /**
+             * Shows a simple alert message using the custom modal.
+             * @param {string} title The title for the modal.
+             * @param {string} message The message to display.
+             */
+            function showCustomAlert(title, message) {
+                actionModalLabel.textContent = title;
+                actionModalBody.textContent = message;
+                actionModalConfirm.textContent = 'OK';
+                actionModalConfirm.className = 'btn btn-primary';
+                actionModalCancel.classList.add('d-none'); // Hide cancel button
+                
+                // Remove any previous confirm listener
+                const newConfirmBtn = actionModalConfirm.cloneNode(true);
+                actionModalConfirm.parentNode.replaceChild(newConfirmBtn, actionModalConfirm);
+                actionModalConfirm = newConfirmBtn; // Update reference
+
+                actionModalConfirm.addEventListener('click', () => {
+                    actionModalInstance.hide();
+                }, { once: true });
+                
+                currentConfirmCallback = null;
+                actionModalInstance.show();
+            }
+
+            /**
+             * Shows a confirmation dialog using the custom modal.
+             * @param {string} title The title for the modal.
+             * @param {string} message The confirmation question.
+             * @param {string} confirmText The text for the confirm button (e.g., "Delete").
+             * @param {string} confirmClass The Bootstrap class for the confirm button (e.g., "btn-danger").
+             * @param {function} callback The function to execute if confirmed.
+             */
+            function showCustomConfirm(title, message, confirmText, confirmClass, callback) {
+                actionModalLabel.textContent = title;
+                actionModalBody.textContent = message;
+                actionModalConfirm.textContent = confirmText;
+                actionModalConfirm.className = `btn ${confirmClass}`;
+                actionModalCancel.classList.remove('d-none'); // Show cancel button
+
+                // Remove and re-add listener to avoid duplicates
+                const newConfirmBtn = actionModalConfirm.cloneNode(true);
+                actionModalConfirm.parentNode.replaceChild(newConfirmBtn, actionModalConfirm);
+                actionModalConfirm = newConfirmBtn; // Update reference
+
+                currentConfirmCallback = callback; // Store the callback
+                
+                actionModalConfirm.addEventListener('click', () => {
+                    if (currentConfirmCallback) {
+                        currentConfirmCallback();
+                    }
+                    currentConfirmCallback = null;
+                    actionModalInstance.hide();
+                }, { once: true });
+
+                actionModalInstance.show();
+            }
+
+            // --- Core App Functions (Modified) ---
 
             function getActivePlan() {
                 if (!state.activePlanId) return null;
                 return state.plans.find(p => p.id === state.activePlanId);
+            }
+
+            /**
+             * NEW: Calculates the average daily usage based on all plans over a given period.
+             * @param {number} daysToLookBack - The number of days to look back for calculating the average.
+             */
+            function calculateHistoricalAverageUsage(daysToLookBack) {
+                const now = Date.now();
+                const lookBackDate = now - (daysToLookBack * ONE_DAY_MS);
+                let totalDataUsed = 0;
+                let totalDaysElapsed = 0;
+
+                state.plans.forEach(plan => {
+                    for (let i = 1; i < plan.history.length; i++) {
+                        const prevEntry = plan.history[i-1];
+                        const currEntry = plan.history[i];
+
+                        // Only consider history entries within the look-back period
+                        if (currEntry.date >= lookBackDate) {
+                            const dataUsed = prevEntry.remaining - currEntry.remaining;
+                            const days = (currEntry.date - prevEntry.date) / ONE_DAY_MS;
+
+                            if (dataUsed > 0 && days > 0) {
+                                totalDataUsed += dataUsed;
+                                totalDaysElapsed += days;
+                            }
+                        }
+                    }
+                });
+
+                if (totalDaysElapsed === 0 || totalDataUsed === 0) {
+                    return 0;
+                }
+                
+                return totalDataUsed / totalDaysElapsed;
             }
             
             function showDashboard() {
@@ -524,11 +657,11 @@
                 const cycleDays = parseInt(cycleDaysInput.value) || 30;
 
                 if (!planName) {
-                    alert("Please enter a name for the plan.");
+                    showCustomAlert("Invalid Input", "Please enter a name for the plan.");
                     return;
                 }
                 if (isNaN(totalData) || totalData <= 0) {
-                    alert("Please enter a valid total data amount.");
+                    showCustomAlert("Invalid Input", "Please enter a valid total data amount.");
                     return;
                 }
                 
@@ -561,14 +694,14 @@
 
                 let remainingData = parseFloat(remainingDataInput.value);
                 if (isNaN(remainingData) || remainingData < 0) {
-                    alert('Please enter a valid remaining data amount.');
+                    showCustomAlert('Invalid Input', 'Please enter a valid remaining data amount.');
                     return;
                 }
                 if (state.unit === 'MB') {
                     remainingData /= GB_TO_MB;
                 }
                 if (remainingData > activePlan.initialTotalData) {
-                    alert('Remaining data cannot be more than the initial total.');
+                    showCustomAlert('Invalid Input', 'Remaining data cannot be more than the initial total.');
                     return;
                 }
                 
@@ -601,21 +734,74 @@
                 const activePlan = getActivePlan();
                 if (!activePlan) return;
 
-                if (confirm(`Are you sure you want to delete the plan "${activePlan.planName}"? All its data will be lost.`)) {
-                    state.plans = state.plans.filter(p => p.id !== state.activePlanId);
-                    
-                    if (state.plans.length > 0) {
-                        // Activate the most recent remaining plan
-                        state.activePlanId = state.plans.sort((a,b) => b.startDate - a.startDate)[0].id;
+                showCustomConfirm(
+                    'Delete Plan',
+                    `Are you sure you want to delete the plan "${activePlan.planName}"? All its data will be lost.`,
+                    'Delete',
+                    'btn-danger',
+                    () => {
+                        state.plans = state.plans.filter(p => p.id !== state.activePlanId);
+                        
+                        if (state.plans.length > 0) {
+                            // Activate the most recent remaining plan
+                            state.activePlanId = state.plans.sort((a,b) => b.startDate - a.startDate)[0].id;
+                            saveState();
+                            updateUI();
+                        } else {
+                            // No plans left, go to setup
+                            state.activePlanId = null;
+                            saveState();
+                            showSetup();
+                        }
+                    }
+                );
+            }
+            
+            // NEW: Renew Plan Function (Modified for Rollover)
+            function renewCurrentPlan() {
+                const activePlan = getActivePlan();
+                if (!activePlan) return;
+
+                const currentRemainingGB = activePlan.history.at(-1).remaining;
+                // Find the *original* base quota, in case of multiple rollovers
+                // We assume the *first* plan with this name holds the original quota
+                // A more robust way might be to store 'baseQuota' on the plan object itself
+                // For now, let's find the first plan with this name.
+                const originalPlan = state.plans.find(p => p.planName === activePlan.planName) || activePlan;
+                const baseQuotaGB = originalPlan.initialTotalData; // Use original quota for renewal
+                
+                const newTotalDataGB = baseQuotaGB + currentRemainingGB;
+
+                // Get display values in the user's current unit
+                const displayRemaining = convertToUnit(currentRemainingGB);
+                const displayBase = convertToUnit(baseQuotaGB);
+                const displayNewTotal = convertToUnit(newTotalDataGB);
+                const unit = state.unit;
+
+                showCustomConfirm(
+                    'Renew Plan with Rollover',
+                    `This will add your remaining ${displayRemaining} ${unit} to your plan's base quota of ${displayBase} ${unit}.
+\nYour new cycle will start today with a total of ${displayNewTotal} ${unit}.
+\nAre you sure you want to renew "${activePlan.planName}"?`,
+                    'Renew',
+                    'btn-success',
+                    () => {
+                        const now = Date.now();
+                        
+                        // Reset the plan with the new rolled-over data
+                        activePlan.startDate = now;
+                        activePlan.initialTotalData = newTotalDataGB; // <-- Set the new total
+                        activePlan.history = [{ date: now, remaining: newTotalDataGB }]; // <-- Start with the new total
+                        activePlan.triggeredAlerts = []; // Reset triggered alerts for the new cycle
+                        // IMPORTANT: We keep the same plan ID and name
+                        
                         saveState();
                         updateUI();
-                    } else {
-                        // No plans left, go to setup
-                        state.activePlanId = null;
-                        saveState();
-                        showSetup();
+                        
+                        // Show a simple confirmation alert
+                        showCustomAlert('Plan Renewed', `"${activePlan.planName}" has been renewed with a new total of ${displayNewTotal} ${unit}.`);
                     }
-                }
+                );
             }
 
             // --- UI UPDATE FUNCTIONS ---
@@ -660,20 +846,18 @@
                 const dataUsedGB = activePlan.initialTotalData - dataRemainingGB;
                 const newDailyAllowanceGB = daysRemaining > 0 ? dataRemainingGB / daysRemaining : 0;
                 
-                let avgDailyUsageGB = 0;
-                if (activePlan.history.length > 1) {
-                    const firstEntry = activePlan.history[0];
-                    const lastEntry = activePlan.history.at(-1);
-                    const dataUsedBetweenEntries = firstEntry.remaining - lastEntry.remaining;
-                    const daysBetweenEntries = (lastEntry.date - firstEntry.date) / ONE_DAY_MS;
-                    if (daysBetweenEntries > 0.01) { 
-                        avgDailyUsageGB = dataUsedBetweenEntries / daysBetweenEntries;
-                    }
-                } else if (elapsedDays > 0.01) {
-                    avgDailyUsageGB = dataUsedGB / elapsedDays;
-                }
+                // --- MODIFIED: Avg. Daily Usage Calculation ---
+                // Calculate based on 90-day history across all plans
+                let avgDailyUsageGB = calculateHistoricalAverageUsage(90);
 
-                // Calculate Highest and Lowest Usage
+                // Fallback for new users or if historical data is zero
+                // Uses the simple average for the *current* plan
+                if (avgDailyUsageGB === 0 && elapsedDays > 0.01) {
+                     avgDailyUsageGB = (activePlan.initialTotalData - dataRemainingGB) / elapsedDays;
+                }
+                // --- End of Modification ---
+
+                // Calculate Highest and Lowest Usage (from active plan only)
                 let highestUsageGB = 0;
                 let lowestUsageGB = Infinity;
                 let dailyRates = [];
@@ -694,6 +878,7 @@
 
                 let forecastDisplay = "--";
                 let depletionDate = null;
+                // Forecast now uses the new avgDailyUsageGB
                 if (avgDailyUsageGB > 0 && dataRemainingGB > 0) {
                     const daysUntilEmpty = dataRemainingGB / avgDailyUsageGB;
                     if (daysUntilEmpty > 1000) {
@@ -774,7 +959,15 @@
                 planSelector.innerHTML = '';
                 const sortedPlans = [...state.plans].sort((a,b) => b.startDate - a.startDate);
                 
+                // Group by plan name to show only the most recent one
+                const latestPlans = {};
                 sortedPlans.forEach(plan => {
+                    if (!latestPlans[plan.planName]) {
+                        latestPlans[plan.planName] = plan;
+                    }
+                });
+
+                Object.values(latestPlans).forEach(plan => {
                     const option = document.createElement('option');
                     option.value = plan.id;
                     option.textContent = plan.planName; // UPDATED
@@ -1032,7 +1225,10 @@
 
             function exportToCSV() {
                 const activePlan = getActivePlan();
-                if (!activePlan || activePlan.history.length <= 1) { alert('No history to export for this plan.'); return; }
+                if (!activePlan || activePlan.history.length <= 1) { 
+                    showCustomAlert('Export Failed', 'No history to export for this plan.'); 
+                    return; 
+                }
                 
                 let csvContent = "data:text/csv;charset=utf-8,Date,Time,Remaining GB\n";
                 activePlan.history.slice(1).forEach(entry => {
@@ -1054,14 +1250,21 @@
             planForm.addEventListener('submit', addNewPlan);
             usageForm.addEventListener('submit', updateRemainingData);
             resetButton.addEventListener('click', deleteCurrentPlan);
+            renewPlanBtn.addEventListener('click', renewCurrentPlan); // NEW
             themeToggleButton.addEventListener('click', handleThemeToggle);
             addNewPlanBtn.addEventListener('click', showSetup);
             
             planSelector.addEventListener('change', (e) => {
-                state.activePlanId = parseInt(e.target.value);
-                saveState();
-                updateUI();
+                // Find the plan by ID from the selector
+                const selectedPlan = state.plans.find(p => p.id === parseInt(e.target.value));
+                if (selectedPlan) {
+                    // Set the active ID
+                    state.activePlanId = selectedPlan.id;
+                    saveState();
+                    updateUI();
+                }
             });
+
 
             unitToggleSwitch.addEventListener('change', (e) => {
                 state.unit = e.target.checked ? 'MB' : 'GB';
@@ -1075,7 +1278,7 @@
 
                 const newDate = new Date(e.target.value);
                 if (newDate > new Date()) {
-                    alert("Start date cannot be in the future.");
+                    showCustomAlert('Invalid Date', 'Start date cannot be in the future.');
                     startDateInput.value = new Date(activePlan.startDate).toISOString().split('T')[0];
                     return;
                 }
@@ -1085,9 +1288,12 @@
                 activePlan.history.sort((a, b) => a.date - b.date);
                 
                 // Update the plan ID to match its new start date
-                const oldId = activePlan.id;
-                activePlan.id = newTimestamp;
-                state.activePlanId = newTimestamp;
+                // But only if it's the *only* plan with this name
+                const plansWithSameName = state.plans.filter(p => p.planName === activePlan.planName);
+                if (plansWithSameName.length === 1) {
+                    activePlan.id = newTimestamp;
+                    state.activePlanId = newTimestamp;
+                }
                 
                 saveState();
                 updateUI();
@@ -1115,3 +1321,4 @@
     </script>
 </body>
 </html>
+
