@@ -5,16 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Dashboard</title>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- Stylesheets and Libraries -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/countup.js@2.8.0/dist/countUp.umd.js"></script>
 
+    <!-- Fonts and Manifest -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
 
+    <!-- Custom CSS -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -79,25 +82,40 @@
             opacity: 0;
             transform: translateX(-30px);
         }
+
+        /* Gradient progress bar transition */
+        #data-usage-progress-bar {
+            transition: width 0.6s ease, background-color 0.6s ease;
+        }
     </style>
 </head>
 <body class="bg-body-tertiary">
 
+    <!-- Setup Screen -->
     <div id="setup-screen">
         <div class="container">
             <div class="row min-vh-100 justify-content-center align-items-center">
                 <div class="col-lg-6">
                     <div class="card shadow-lg border-0 rounded-4 p-4 animated-card">
                         <div class="card-body text-center">
-                            <h1 class="card-title display-5 fw-bold mb-3">Data Dashboard Setup</h1>
-                            <p class="card-text text-body-secondary mb-4">Enter your total monthly data bundle to begin.</p>
+                            <h1 class="card-title display-5 fw-bold mb-3">Add New Data Plan</h1>
+                            <p class="card-text text-body-secondary mb-4">Enter your new plan's details to begin tracking.</p>
                             <form id="plan-form">
+                                <!-- NEW: Plan Name Input -->
                                 <div class="mb-3">
-                                    <label for="total-data-input" class="form-label visually-hidden">Total Monthly Data (in GB)</label>
-                                    <input type="number" id="total-data-input" class="form-control form-control-lg text-center" min="1" step="0.1" required placeholder="e.g., 100">
+                                    <label for="plan-name-input" class="form-label visually-hidden">Plan Name</label>
+                                    <input type="text" id="plan-name-input" class="form-control form-control-lg text-center" required placeholder="Plan Name (e.g., Main Plan, Zoom Plan)">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="total-data-input" class="form-label visually-hidden">Total Data (in GB)</label>
+                                    <input type="number" id="total-data-input" class="form-control form-control-lg text-center" min="1" step="0.1" required placeholder="Total Data (e.g., 100 GB)">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="cycle-days-input" class="form-label visually-hidden">Cycle Length (Days)</label>
+                                    <input type="number" id="cycle-days-input" class="form-control form-control-lg text-center" min="1" value="30" required placeholder="Cycle Length (e.g., 30 Days)">
                                 </div>
                                 <div class="d-grid">
-                                    <button type="submit" class="btn btn-primary btn-lg">Start 30-Day Cycle</button>
+                                    <button type="submit" class="btn btn-primary btn-lg">Add & Start Plan</button>
                                 </div>
                             </form>
                         </div>
@@ -107,11 +125,21 @@
         </div>
     </div>
     
+    <!-- Dashboard Screen -->
     <div id="dashboard-screen" class="d-none">
         <div class="container-xxl py-4">
             <header class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 pb-3 border-bottom border-secondary-subtle">
-                <h1 class="h2 fw-bold mb-0">Monthly Data Dashboard</h1>
-                <div class="d-flex align-items-center gap-2">
+                <!-- Title now shows plan name -->
+                <h1 id="dashboard-title" class="h2 fw-bold mb-0"></h1>
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                    <!-- Plan selector now shows plan names -->
+                    <select id="plan-selector" class="form-select" style="width: auto;"></select>
+                    <button id="add-new-plan-btn" class="btn btn-outline-primary">
+                        <i class="bi bi-plus-lg me-1"></i> New
+                    </button>
+                    <button id="reports-button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#reports-modal">
+                        <i class="bi bi-graph-up-arrow me-1"></i> Reports
+                    </button>
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" role="switch" id="unit-toggle-switch">
                         <label class="form-check-label" for="unit-toggle-switch">Use MB</label>
@@ -120,20 +148,20 @@
                         <i class="bi"></i>
                     </button>
                     <button id="reset-button" class="btn btn-danger">
-                        <i class="bi bi-arrow-counterclockwise me-1"></i> Reset Plan
+                        <i class="bi bi-trash-fill me-1"></i> Delete Plan
                     </button>
                 </div>
             </header>
 
-            <div id="data-cap-alert" class="alert alert-danger d-flex align-items-center d-none" role="alert">
-                <i class="bi bi-exclamation-triangle-fill flex-shrink-0 me-3 h4 mb-0"></i>
-                <div>
-                    <strong>Data Cap Alert!</strong> You have dropped below your threshold of <span id="alert-threshold-value"></span>.
-                </div>
+            <!-- Gradient Progress Bar -->
+            <div class="progress mb-4" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="height: 10px;">
+                <div id="data-usage-progress-bar" class="progress-bar" style="width: 0%; background-color: hsl(120, 70%, 50%);"></div>
             </div>
 
+            <!-- Metric Cards -->
             <div class="row g-4 mb-4">
-                <div class="col-lg-3 col-md-6">
+                <!-- Row 1 -->
+                <div class="col-lg-4 col-md-6">
                     <div class="card h-100 shadow-sm border-0 rounded-4 animated-card" style="animation-delay: 100ms;">
                         <div class="card-body">
                             <h5 class="card-title text-body-secondary fw-semibold">Days Remaining</h5>
@@ -141,7 +169,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-3 col-md-6">
+                <div class="col-lg-4 col-md-6">
                     <div class="card h-100 shadow-sm border-0 rounded-4 animated-card" style="animation-delay: 200ms;">
                         <div class="card-body">
                             <h5 class="card-title text-body-secondary fw-semibold">Data Remaining</h5>
@@ -149,7 +177,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-3 col-md-6">
+                <div class="col-lg-4 col-md-6">
                     <div class="card h-100 shadow-sm border-0 rounded-4 animated-card" style="animation-delay: 300ms;">
                         <div class="card-body">
                              <h5 class="card-title text-body-secondary fw-semibold">New Daily Allowance <i class="bi bi-info-circle" data-bs-toggle="tooltip" title="Remaining data divided by remaining days"></i></h5>
@@ -157,8 +185,34 @@
                         </div>
                     </div>
                 </div>
+                <!-- Row 2 -->
                 <div class="col-lg-3 col-md-6">
-                    <div class="card h-100 shadow-sm border-0 rounded-4 bg-primary-subtle border-primary animated-card" style="animation-delay: 400ms;">
+                    <div class="card h-100 shadow-sm border-0 rounded-4 animated-card" style="animation-delay: 400ms;">
+                        <div class="card-body">
+                             <h5 class="card-title text-body-secondary fw-semibold">Avg. Daily Usage <i class="bi bi-info-circle" data-bs-toggle="tooltip" title="Your average consumption per day in this cycle"></i></h5>
+                            <p class="metric-value mb-0"><span id="avg-daily-usage">--</span> <small id="avg-daily-usage-unit" class="text-body-secondary fw-semibold metric-unit"></small></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="card h-100 shadow-sm border-0 rounded-4 animated-card" style="animation-delay: 500ms;">
+                        <div class="card-body">
+                             <h5 class="card-title text-body-secondary fw-semibold">Highest Daily Usage <i class="bi bi-info-circle" data-bs-toggle="tooltip" title="The highest calculated daily burn rate between updates"></i></h5>
+                            <p class="metric-value mb-0"><span id="highest-usage">--</span> <small id="highest-usage-unit" class="text-body-secondary fw-semibold metric-unit"></small></p>
+                        </div>
+                    </div>
+                </div>
+                <!-- NEW: Lowest Daily Usage Card -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="card h-100 shadow-sm border-0 rounded-4 animated-card" style="animation-delay: 600ms;">
+                        <div class="card-body">
+                             <h5 class="card-title text-body-secondary fw-semibold">Lowest Daily Usage <i class="bi bi-info-circle" data-bs-toggle="tooltip" title="The lowest calculated daily burn rate between updates"></i></h5>
+                            <p class="metric-value mb-0"><span id="lowest-usage">--</span> <small id="lowest-usage-unit" class="text-body-secondary fw-semibold metric-unit"></small></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="card h-100 shadow-sm border-0 rounded-4 bg-primary-subtle border-primary animated-card" style="animation-delay: 700ms;">
                         <div class="card-body">
                             <h5 class="card-title text-body-secondary fw-semibold">Data Depletion Forecast <i class="bi bi-info-circle" data-bs-toggle="tooltip" title="Projected date your data will run out based on average usage."></i></h5>
                             <p id="forecast-value" class="metric-value mb-0" style="font-size: 1.9rem;">--</p>
@@ -167,10 +221,12 @@
                 </div>
             </div>
 
+            <!-- Main Content Area -->
             <div class="row g-4">
                 <div class="col-lg-4">
                     <div class="vstack gap-4">
-                        <div class="card shadow-sm border-0 rounded-4 animated-card" style="animation-delay: 500ms;">
+                        <!-- Update & Settings Card -->
+                        <div class="card shadow-sm border-0 rounded-4 animated-card" style="animation-delay: 800ms;">
                             <div class="card-body p-4">
                                 <h4 class="card-title fw-bold mb-3">Update & Settings</h4>
                                 <form id="usage-form">
@@ -190,20 +246,12 @@
                                     <label for="start-date-input" class="form-label">Cycle Start Date</label>
                                     <input type="date" id="start-date-input" class="form-control">
                                 </div>
-                                <div class="mb-3">
-                                    <label for="alert-threshold-input" class="form-label">Data Cap Alert Threshold (<span class="unit-label">GB</span>)</label>
-                                    <select class="form-select" id="alert-threshold-input">
-                                        <option value="5">5 GB</option>
-                                        <option value="10">10 GB</option>
-                                        <option value="15">15 GB</option>
-                                        <option value="20">20 GB</option>
-                                        <option value="25">25 GB</option>
-                                    </select>
-                                </div>
+                                <!-- REMOVED: Alert Threshold Dropdown -->
                                 <button id="export-csv-btn" class="btn btn-outline-secondary w-100"><i class="bi bi-download me-2"></i>Export History to CSV</button>
                             </div>
                         </div>
-                        <div class="card shadow-sm border-0 rounded-4 animated-card" style="animation-delay: 600ms;">
+                        <!-- History Card -->
+                        <div class="card shadow-sm border-0 rounded-4 animated-card" style="animation-delay: 900ms;">
                             <div class="card-body p-4">
                                 <h4 class="card-title fw-bold mb-3">Update History</h4>
                                 <div id="history-log-container" class="overflow-auto" style="max-height: 450px;"></div>
@@ -214,7 +262,8 @@
 
                 <div class="col-lg-8">
                     <div class="vstack gap-4">
-                        <div class="card shadow-sm border-0 rounded-4 animated-card" style="animation-delay: 700ms;">
+                        <!-- Trend Chart Card -->
+                        <div class="card shadow-sm border-0 rounded-4 animated-card" style="animation-delay: 1000ms;">
                             <div class="card-body p-4">
                                 <h4 class="card-title fw-bold mb-3">Remaining Data Trend</h4>
                                 <div class="chart-container">
@@ -222,9 +271,10 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- Doughnut and Milestones Row -->
                         <div class="row g-4">
                             <div class="col-md-6">
-                                <div class="card shadow-sm border-0 rounded-4 h-100 animated-card" style="animation-delay: 800ms;">
+                                <div class="card shadow-sm border-0 rounded-4 h-100 animated-card" style="animation-delay: 1100ms;">
                                     <div class="card-body p-4">
                                         <h4 class="card-title fw-bold mb-3">Current Burn Rate</h4>
                                         <div class="chart-container" style="height: 250px;">
@@ -234,7 +284,7 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="card shadow-sm border-0 rounded-4 h-100 animated-card" style="animation-delay: 900ms;">
+                                <div class="card shadow-sm border-0 rounded-4 h-100 animated-card" style="animation-delay: 1200ms;">
                                     <div class="card-body p-4">
                                         <h4 class="card-title fw-bold mb-3">Consumption Milestones</h4>
                                         <div id="milestones-container" class="d-flex flex-column justify-content-center h-100 gap-3">
@@ -248,67 +298,182 @@
             </div>
         </div>
     </div>
+
+    <!-- Reports Modal -->
+    <div class="modal fade" id="reports-modal" tabindex="-1" aria-labelledby="reports-modal-label" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="reports-modal-label">Usage Reports & Recommendations</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Plan Recommendation -->
+                    <div class="mb-4 p-3 rounded bg-primary-subtle">
+                        <h5 class="fw-bold"><i class="bi bi-lightbulb-fill me-2"></i>Next Plan Recommendation</h5>
+                        <p id="plan-recommendation" class="mb-0">Analyzing your past usage...</p>
+                    </div>
+
+                    <!-- 1-Year Usage History Chart -->
+                    <h5 class="fw-bold">1-Year Usage History (Total GB Consumed Per Plan)</h5>
+                    <div class="chart-container" style="height: 350px;">
+                        <canvas id="yearlyUsageChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <!-- Automatic Toast Alert Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="data-alert-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>
+                <strong class="me-auto">Data Cap Alert</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                You have dropped below <strong id="toast-alert-level"></strong>.
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 
+    <!-- Main Application Logic -->
     <script>
-        // THIS IS YOUR ORIGINAL SCRIPT - IT HAS NOT BEEN CHANGED
         document.addEventListener('DOMContentLoaded', () => {
-
+            // --- STATE MANAGEMENT ---
             let state = {};
             const defaultState = {
-                initialTotalData: null,
-                startDate: null,
-                history: [],
-                alertThreshold: 10,
+                plans: [], // Array of plan objects
+                activePlanId: null,
                 theme: 'dark',
                 unit: 'GB'
+                // Note: alertThreshold is removed, now handled automatically
             };
             
+            // --- ELEMENT SELECTORS ---
             const setupScreen = document.getElementById('setup-screen');
             const dashboardScreen = document.getElementById('dashboard-screen');
             const planForm = document.getElementById('plan-form');
+            const planNameInput = document.getElementById('plan-name-input'); // NEW
             const totalDataInput = document.getElementById('total-data-input');
+            const cycleDaysInput = document.getElementById('cycle-days-input');
             const usageForm = document.getElementById('usage-form');
             const remainingDataInput = document.getElementById('remaining-data-input');
             const resetButton = document.getElementById('reset-button');
             const themeToggleButton = document.getElementById('theme-toggle-btn');
-            const alertThresholdInput = document.getElementById('alert-threshold-input');
             const exportCsvBtn = document.getElementById('export-csv-btn');
             const unitToggleSwitch = document.getElementById('unit-toggle-switch');
             const unitLabels = document.querySelectorAll('.unit-label');
             const startDateInput = document.getElementById('start-date-input');
+            const planSelector = document.getElementById('plan-selector');
+            const addNewPlanBtn = document.getElementById('add-new-plan-btn');
+            const dashboardTitle = document.getElementById('dashboard-title');
+            const reportsModalEl = document.getElementById('reports-modal');
+            
+            // Metric Elements
             const daysLeftEl = document.getElementById('days-left');
             const dataLeftEl = document.getElementById('data-left');
             const dataLeftUnitEl = document.getElementById('data-left-unit');
             const dailyAllowanceEl = document.getElementById('daily-allowance');
             const dailyAllowanceUnitEl = document.getElementById('daily-allowance-unit');
+            const avgDailyUsageEl = document.getElementById('avg-daily-usage');
+            const avgDailyUsageUnitEl = document.getElementById('avg-daily-usage-unit');
+            const highestUsageEl = document.getElementById('highest-usage');
+            const highestUsageUnitEl = document.getElementById('highest-usage-unit');
+            const lowestUsageEl = document.getElementById('lowest-usage'); // NEW
+            const lowestUsageUnitEl = document.getElementById('lowest-usage-unit'); // NEW
             const forecastValueEl = document.getElementById('forecast-value');
+            
+            // UI Components
             const historyLogContainer = document.getElementById('history-log-container');
-            const dataCapAlert = document.getElementById('data-cap-alert');
-            const alertThresholdValue = document.getElementById('alert-threshold-value');
             const milestonesContainer = document.getElementById('milestones-container');
+            const dataUsageProgressBar = document.getElementById('data-usage-progress-bar');
+            const planRecommendationEl = document.getElementById('plan-recommendation');
+            const toastAlertLevel = document.getElementById('toast-alert-level'); // UPDATED
+            
+            // Charts
             const usageTrendCtx = document.getElementById('usageTrendChart').getContext('2d');
             const burnRateCtx = document.getElementById('burnRateChart').getContext('2d');
+            const yearlyUsageCtx = document.getElementById('yearlyUsageChart').getContext('2d');
 
-            let usageTrendChart, burnRateChart;
-            let daysLeftAnim, dataLeftAnim, dailyAllowanceAnim;
-            const CYCLE_DAYS = 30;
+            let usageTrendChart, burnRateChart, yearlyUsageChart;
+            let daysLeftAnim, dataLeftAnim, dailyAllowanceAnim, avgDailyUsageAnim, highestUsageAnim, lowestUsageAnim; // NEW
+            let dataAlertToastInstance;
             const GB_TO_MB = 1024;
+            const ONE_DAY_MS = 1000 * 60 * 60 * 24;
+            // NEW: Automatic alert levels
+            const ALERT_THRESHOLDS_GB = [20, 15, 10, 5, 2, 0.5]; 
+
+            // --- CORE FUNCTIONS ---
 
             function loadState() {
                 try {
-                    const storedState = localStorage.getItem('dataDashboardState_v6');
-                    state = storedState ? JSON.parse(storedState) : { ...defaultState };
+                    const storedStateStr = localStorage.getItem('dataDashboardState_v7'); // Incremented version
+                    if (!storedStateStr) {
+                        state = { ...defaultState };
+                        return;
+                    }
+                    
+                    const storedState = JSON.parse(storedStateStr);
+
+                    // Migration logic from old single-plan state (v5 or earlier)
+                    if (storedState.startDate && !storedState.plans) {
+                        console.log("Migrating old state (v5)...");
+                        const planDate = new Date(storedState.startDate).toLocaleDateString();
+                        const oldPlan = {
+                            id: storedState.startDate,
+                            planName: `Plan: ${planDate}`, // NEW
+                            initialTotalData: storedState.initialTotalData,
+                            startDate: storedState.startDate,
+                            cycleDays: 30, // Assume 30
+                            history: storedState.history,
+                            triggeredAlerts: [] // NEW
+                        };
+                        state = {
+                            plans: [oldPlan],
+                            activePlanId: oldPlan.id,
+                            theme: storedState.theme || 'dark',
+                            unit: storedState.unit || 'GB'
+                        };
+                        saveState(); // Save the new migrated state
+                    } 
+                    // Migration from v6 (multi-plan, but no planName or triggeredAlerts)
+                    else if (storedState.plans && !storedState.plans[0]?.planName) {
+                        console.log("Migrating old state (v6)...");
+                        storedState.plans.forEach(plan => {
+                            const planDate = new Date(plan.startDate).toLocaleDateString();
+                            plan.planName = `Plan: ${planDate}`;
+                            plan.triggeredAlerts = [];
+                        });
+                        state = {
+                            plans: storedState.plans,
+                            activePlanId: storedState.activePlanId,
+                            theme: storedState.theme || 'dark',
+                            unit: storedState.unit || 'GB'
+                        }
+                        saveState();
+                    }
+                    else if (storedState.plans) {
+                        state = storedState;
+                        // Ensure default keys exist if state is partially formed
+                        if (!state.theme) state.theme = defaultState.theme;
+                        if (!state.unit) state.unit = defaultState.unit;
+                    } else {
+                         state = { ...defaultState };
+                    }
                 } catch (e) {
-                    console.error("Failed to load state from localStorage", e);
+                    console.error("Failed to load or migrate state from localStorage", e);
                     state = { ...defaultState };
                 }
             }
 
             function saveState() {
                 try {
-                    localStorage.setItem('dataDashboardState_v6', JSON.stringify(state));
+                    localStorage.setItem('dataDashboardState_v7', JSON.stringify(state)); // Incremented version
                 } catch (e) {
                     console.error("Failed to save state to localStorage", e);
                 }
@@ -317,14 +482,29 @@
             function initializeApp() {
                 loadState();
                 applyTheme(state.theme);
-                if (state.startDate) {
+                
+                if (state.plans.length > 0) {
+                    if (!state.activePlanId || !getActivePlan()) {
+                        state.activePlanId = state.plans.sort((a,b) => b.startDate - a.startDate)[0].id;
+                    }
                     showDashboard();
                     updateUI();
+                } else {
+                    showSetup();
                 }
+
+                // Init Bootstrap components
                 const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
                 tooltipTriggerList.map(function (tooltipTriggerEl) {
                   return new bootstrap.Tooltip(tooltipTriggerEl)
                 });
+                dataAlertToastInstance = new bootstrap.Toast(document.getElementById('data-alert-toast'));
+                reportsModalEl.addEventListener('shown.bs.modal', renderReports);
+            }
+
+            function getActivePlan() {
+                if (!state.activePlanId) return null;
+                return state.plans.find(p => p.id === state.activePlanId);
             }
             
             function showDashboard() {
@@ -332,25 +512,53 @@
                 dashboardScreen.classList.remove('d-none');
             }
 
-            function startPlan(e) {
+            function showSetup() {
+                setupScreen.classList.remove('d-none');
+                dashboardScreen.classList.add('d-none');
+            }
+
+            function addNewPlan(e) {
                 e.preventDefault();
+                const planName = planNameInput.value.trim();
                 const totalData = parseFloat(totalDataInput.value);
+                const cycleDays = parseInt(cycleDaysInput.value) || 30;
+
+                if (!planName) {
+                    alert("Please enter a name for the plan.");
+                    return;
+                }
                 if (isNaN(totalData) || totalData <= 0) {
                     alert("Please enter a valid total data amount.");
                     return;
                 }
                 
-                state.initialTotalData = totalData;
-                state.startDate = Date.now();
-                state.history = [{ date: state.startDate, remaining: totalData }];
+                const now = Date.now();
+                const newPlan = {
+                    id: now,
+                    planName: planName, // NEW
+                    initialTotalData: totalData,
+                    startDate: now,
+                    cycleDays: cycleDays,
+                    history: [{ date: now, remaining: totalData }],
+                    triggeredAlerts: [] // NEW
+                };
+                
+                state.plans.push(newPlan);
+                state.activePlanId = newPlan.id;
+                
                 saveState();
                 showDashboard();
                 updateUI();
+                planNameInput.value = '';
                 totalDataInput.value = '';
+                cycleDaysInput.value = '30';
             }
 
             function updateRemainingData(e) {
                 e.preventDefault();
+                const activePlan = getActivePlan();
+                if (!activePlan) return;
+
                 let remainingData = parseFloat(remainingDataInput.value);
                 if (isNaN(remainingData) || remainingData < 0) {
                     alert('Please enter a valid remaining data amount.');
@@ -359,23 +567,29 @@
                 if (state.unit === 'MB') {
                     remainingData /= GB_TO_MB;
                 }
-                if (remainingData > state.initialTotalData) {
+                if (remainingData > activePlan.initialTotalData) {
                     alert('Remaining data cannot be more than the initial total.');
                     return;
                 }
-                state.history.push({ date: Date.now(), remaining: remainingData });
-                state.history.sort((a, b) => a.date - b.date);
+                
+                activePlan.history.push({ date: Date.now(), remaining: remainingData });
+                activePlan.history.sort((a, b) => a.date - b.date);
+                
                 saveState();
-                updateUI();
+                updateUI(); // Check for alerts will happen in here
                 remainingDataInput.value = '';
             }
 
             function deleteHistoryEntry(timestamp, element) {
+                const activePlan = getActivePlan();
+                if (!activePlan) return;
+
                 element.classList.add('fade-out');
                 setTimeout(() => {
-                    state.history = state.history.filter(entry => entry.date !== timestamp);
-                    if (state.history.length < 1) {
-                         resetPlan();
+                    activePlan.history = activePlan.history.filter(entry => entry.date !== timestamp);
+                    // If only the initial entry is left, delete the whole plan
+                    if (activePlan.history.length < 2) {
+                         deleteCurrentPlan();
                          return;
                     }
                     saveState();
@@ -383,105 +597,216 @@
                 }, 400);
             }
             
-            function resetPlan() {
-                if (confirm('Are you sure? All data will be lost.')) {
-                    localStorage.removeItem('dataDashboardState_v6');
-                    window.location.reload();
+            function deleteCurrentPlan() {
+                const activePlan = getActivePlan();
+                if (!activePlan) return;
+
+                if (confirm(`Are you sure you want to delete the plan "${activePlan.planName}"? All its data will be lost.`)) {
+                    state.plans = state.plans.filter(p => p.id !== state.activePlanId);
+                    
+                    if (state.plans.length > 0) {
+                        // Activate the most recent remaining plan
+                        state.activePlanId = state.plans.sort((a,b) => b.startDate - a.startDate)[0].id;
+                        saveState();
+                        updateUI();
+                    } else {
+                        // No plans left, go to setup
+                        state.activePlanId = null;
+                        saveState();
+                        showSetup();
+                    }
                 }
             }
+
+            // --- UI UPDATE FUNCTIONS ---
             
-            function convertToUnit(valueInGB) {
-                return state.unit === 'MB' ? valueInGB * GB_TO_MB : valueInGB;
+            function convertToUnit(valueInGB, precision = null) {
+                const isMB = state.unit === 'MB';
+                const convertedValue = isMB ? valueInGB * GB_TO_MB : valueInGB;
+                if (precision !== null) {
+                    return convertedValue.toFixed(precision);
+                }
+                return convertedValue.toFixed(isMB ? 0 : 2);
             }
 
             function updateUI() {
-                if (!state.startDate) return;
+                const activePlan = getActivePlan();
+                if (!activePlan) {
+                    if(state.plans.length > 0) {
+                        state.activePlanId = state.plans.sort((a,b) => b.startDate - a.startDate)[0].id;
+                        saveState();
+                        updateUI();
+                    } else {
+                        showSetup();
+                    }
+                    return;
+                }
+
+                populatePlanSelector();
 
                 const isMB = state.unit === 'MB';
                 unitToggleSwitch.checked = isMB;
                 unitLabels.forEach(label => label.textContent = state.unit);
                 
                 const now = new Date();
-                const startDate = new Date(state.startDate);
+                const startDate = new Date(activePlan.startDate);
                 
                 const elapsedMilliseconds = now - startDate;
-                const elapsedDays = Math.max(0, elapsedMilliseconds / (1000 * 60 * 60 * 24));
-                const daysRemaining = Math.max(0, Math.ceil(CYCLE_DAYS - elapsedDays));
+                const elapsedDays = Math.max(0, elapsedMilliseconds / ONE_DAY_MS);
+                const daysRemaining = Math.max(0, Math.ceil(activePlan.cycleDays - elapsedDays));
                 
-                const currentData = state.history[state.history.length - 1];
+                const currentData = activePlan.history.at(-1);
                 const dataRemainingGB = currentData.remaining;
-                const dataUsedGB = state.initialTotalData - dataRemainingGB;
+                const dataUsedGB = activePlan.initialTotalData - dataRemainingGB;
                 const newDailyAllowanceGB = daysRemaining > 0 ? dataRemainingGB / daysRemaining : 0;
                 
                 let avgDailyUsageGB = 0;
-                if (state.history.length > 1) {
-                    const firstEntry = state.history[0];
-                    const lastEntry = state.history[state.history.length - 1];
+                if (activePlan.history.length > 1) {
+                    const firstEntry = activePlan.history[0];
+                    const lastEntry = activePlan.history.at(-1);
                     const dataUsedBetweenEntries = firstEntry.remaining - lastEntry.remaining;
-                    const daysBetweenEntries = (lastEntry.date - firstEntry.date) / (1000 * 60 * 60 * 24);
+                    const daysBetweenEntries = (lastEntry.date - firstEntry.date) / ONE_DAY_MS;
                     if (daysBetweenEntries > 0.01) { 
                         avgDailyUsageGB = dataUsedBetweenEntries / daysBetweenEntries;
                     }
+                } else if (elapsedDays > 0.01) {
+                    avgDailyUsageGB = dataUsedGB / elapsedDays;
                 }
 
+                // Calculate Highest and Lowest Usage
+                let highestUsageGB = 0;
+                let lowestUsageGB = Infinity;
+                let dailyRates = [];
+                for (let i = 1; i < activePlan.history.length; i++) {
+                    const prev = activePlan.history[i-1];
+                    const curr = activePlan.history[i];
+                    const daysBetween = (curr.date - prev.date) / ONE_DAY_MS;
+                    if (daysBetween > 0) {
+                        const dailyRate = (prev.remaining - curr.remaining) / daysBetween;
+                        if (dailyRate > 0) { // Only count positive usage
+                            dailyRates.push(dailyRate);
+                            if (dailyRate > highestUsageGB) highestUsageGB = dailyRate;
+                            if (dailyRate < lowestUsageGB) lowestUsageGB = dailyRate;
+                        }
+                    }
+                }
+                if (lowestUsageGB === Infinity) lowestUsageGB = 0; // Handle no usage
+
                 let forecastDisplay = "--";
+                let depletionDate = null;
                 if (avgDailyUsageGB > 0 && dataRemainingGB > 0) {
                     const daysUntilEmpty = dataRemainingGB / avgDailyUsageGB;
                     if (daysUntilEmpty > 1000) {
                         forecastDisplay = "Never";
                     } else {
-                        const depletionDate = new Date(now.getTime() + daysUntilEmpty * 24 * 60 * 60 * 1000);
+                        depletionDate = new Date(now.getTime() + daysUntilEmpty * ONE_DAY_MS);
                         forecastDisplay = depletionDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
                     }
                 } else if (dataUsedGB <= 0) {
                     forecastDisplay = "N/A";
                 }
 
-                // Fallback for metrics if CountUp is not available
-                if (typeof CountUp === 'undefined') {
-                    daysLeftEl.textContent = Math.round(daysRemaining);
-                    dataLeftEl.textContent = convertToUnit(dataRemainingGB).toFixed(isMB ? 0 : 2);
-                    dailyAllowanceEl.textContent = convertToUnit(newDailyAllowanceGB).toFixed(isMB ? 0 : 2);
-                } else {
-                    const animOptions = { duration: 1.2, useEasing: true, decimalPlaces: isMB ? 0 : 2 };
-                    if (!daysLeftAnim) {
-                        daysLeftAnim = new CountUp(daysLeftEl, Math.round(daysRemaining), { ...animOptions, decimalPlaces: 0 });
-                        dataLeftAnim = new CountUp(dataLeftEl, convertToUnit(dataRemainingGB), animOptions);
-                        dailyAllowanceAnim = new CountUp(dailyAllowanceEl, convertToUnit(newDailyAllowanceGB), animOptions);
-                        [daysLeftAnim, dataLeftAnim, dailyAllowanceAnim].forEach(a => a.start());
-                    } else {
-                        daysLeftAnim.update(Math.round(daysRemaining));
-                        dataLeftAnim.options.decimalPlaces = animOptions.decimalPlaces;
-                        dataLeftAnim.update(convertToUnit(dataRemainingGB));
-                        dailyAllowanceAnim.options.decimalPlaces = animOptions.decimalPlaces;
-                        dailyAllowanceAnim.update(convertToUnit(newDailyAllowanceGB));
-                    }
-                }
+                // Update animated metrics
+                updateMetricAnimations(daysRemaining, dataRemainingGB, newDailyAllowanceGB, avgDailyUsageGB, highestUsageGB, lowestUsageGB);
                 
                 dataLeftUnitEl.textContent = state.unit;
                 dailyAllowanceUnitEl.textContent = state.unit;
+                avgDailyUsageUnitEl.textContent = state.unit + '/day';
+                highestUsageUnitEl.textContent = state.unit + '/day';
+                lowestUsageUnitEl.textContent = state.unit + '/day'; // NEW
                 forecastValueEl.textContent = forecastDisplay;
+                dashboardTitle.textContent = activePlan.planName; // UPDATED
                 
-                startDateInput.value = new Date(state.startDate).toISOString().split('T')[0];
-                alertThresholdInput.value = state.alertThreshold;
-                renderHistory();
-                updateAlerts(dataRemainingGB);
-                updateMilestones(dataUsedGB);
-                renderCharts(dataUsedGB, dataRemainingGB);
+                startDateInput.value = startDate.toISOString().split('T')[0];
+
+                // Update UI components
+                renderHistory(activePlan);
+                checkAutomaticAlerts(dataRemainingGB, activePlan); // UPDATED
+                updateMilestones(dataUsedGB, activePlan.initialTotalData);
+                updateGradientProgressBar(dataUsedGB, activePlan.initialTotalData);
+                renderCharts(activePlan, dataUsedGB, dataRemainingGB, depletionDate);
             }
 
-            function updateAlerts(dataRemainingGB) {
-                const thresholdInCurrentUnit = convertToUnit(state.alertThreshold);
-                alertThresholdValue.textContent = `${thresholdInCurrentUnit.toFixed(0)} ${state.unit}`;
-                if (dataRemainingGB < state.alertThreshold) {
-                    dataCapAlert.classList.remove('d-none');
+            function updateMetricAnimations(days, remaining, allowance, avgUsage, highestUsage, lowestUsage) {
+                const isMB = state.unit === 'MB';
+                const animOptions = { duration: 1.2, useEasing: true };
+                const animOptionsDecimal = { ...animOptions, decimalPlaces: isMB ? 0 : 2 };
+                
+                if (typeof CountUp === 'undefined') {
+                    daysLeftEl.textContent = Math.round(days);
+                    dataLeftEl.textContent = convertToUnit(remaining);
+                    dailyAllowanceEl.textContent = convertToUnit(allowance);
+                    avgDailyUsageEl.textContent = convertToUnit(avgUsage);
+                    highestUsageEl.textContent = convertToUnit(highestUsage);
+                    lowestUsageEl.textContent = convertToUnit(lowestUsage); // NEW
+                    return;
+                }
+
+                if (!daysLeftAnim) {
+                    daysLeftAnim = new CountUp(daysLeftEl, Math.round(days), { ...animOptions, decimalPlaces: 0 });
+                    dataLeftAnim = new CountUp(dataLeftEl, convertToUnit(remaining), animOptionsDecimal);
+                    dailyAllowanceAnim = new CountUp(dailyAllowanceEl, convertToUnit(allowance), animOptionsDecimal);
+                    avgDailyUsageAnim = new CountUp(avgDailyUsageEl, convertToUnit(avgUsage), animOptionsDecimal);
+                    highestUsageAnim = new CountUp(highestUsageEl, convertToUnit(highestUsage), animOptionsDecimal);
+                    lowestUsageAnim = new CountUp(lowestUsageEl, convertToUnit(lowestUsage), animOptionsDecimal); // NEW
+                    [daysLeftAnim, dataLeftAnim, dailyAllowanceAnim, avgDailyUsageAnim, highestUsageAnim, lowestUsageAnim].forEach(a => a.start());
                 } else {
-                    dataCapAlert.classList.add('d-none');
+                    daysLeftAnim.update(Math.round(days));
+                    
+                    dataLeftAnim.options.decimalPlaces = animOptionsDecimal.decimalPlaces;
+                    dataLeftAnim.update(convertToUnit(remaining));
+                    
+                    dailyAllowanceAnim.options.decimalPlaces = animOptionsDecimal.decimalPlaces;
+                    dailyAllowanceAnim.update(convertToUnit(allowance));
+                    
+                    avgDailyUsageAnim.options.decimalPlaces = animOptionsDecimal.decimalPlaces;
+                    avgDailyUsageAnim.update(convertToUnit(avgUsage));
+
+                    highestUsageAnim.options.decimalPlaces = animOptionsDecimal.decimalPlaces;
+                    highestUsageAnim.update(convertToUnit(highestUsage));
+
+                    lowestUsageAnim.options.decimalPlaces = animOptionsDecimal.decimalPlaces; // NEW
+                    lowestUsageAnim.update(convertToUnit(lowestUsage)); // NEW
                 }
             }
 
-            function updateMilestones(dataUsedGB) {
-                const percentageUsed = (dataUsedGB / state.initialTotalData) * 100;
+            function populatePlanSelector() {
+                planSelector.innerHTML = '';
+                const sortedPlans = [...state.plans].sort((a,b) => b.startDate - a.startDate);
+                
+                sortedPlans.forEach(plan => {
+                    const option = document.createElement('option');
+                    option.value = plan.id;
+                    option.textContent = plan.planName; // UPDATED
+                    if (plan.id === state.activePlanId) {
+                        option.selected = true;
+                    }
+                    planSelector.appendChild(option);
+                });
+            }
+
+            // NEW: Automatic Alert System
+            function checkAutomaticAlerts(dataRemainingGB, activePlan) {
+                let didAlert = false;
+                for (const threshold of ALERT_THRESHOLDS_GB) {
+                    if (dataRemainingGB < threshold && !activePlan.triggeredAlerts.includes(threshold)) {
+                        
+                        const displayValue = threshold < 1 ? (threshold * GB_TO_MB) : threshold;
+                        const displayUnit = threshold < 1 ? "MB" : "GB";
+                        toastAlertLevel.textContent = `${displayValue} ${displayUnit}`;
+                        
+                        dataAlertToastInstance.show();
+                        activePlan.triggeredAlerts.push(threshold);
+                        didAlert = true;
+                    }
+                }
+                if (didAlert) {
+                    saveState();
+                }
+            }
+
+            function updateMilestones(dataUsedGB, initialTotalData) {
+                const percentageUsed = (dataUsedGB / initialTotalData) * 100;
                 const milestones = [
                     { percent: 25, icon: 'bi-reception-2', label: '25% Consumed' },
                     { percent: 50, icon: 'bi-reception-3', label: '50% Consumed' },
@@ -495,10 +820,21 @@
                         </div>`;
                 }).join('');
             }
+
+            // Gradient Progress Bar
+            function updateGradientProgressBar(dataUsedGB, initialTotalData) {
+                const percentageUsed = Math.min(1, Math.max(0, dataUsedGB / initialTotalData));
+                const hue = Math.max(0, 120 * (1 - percentageUsed)); // 120 (green) down to 0 (red)
+                
+                dataUsageProgressBar.style.width = `${percentageUsed * 100}%`;
+                dataUsageProgressBar.style.backgroundColor = `hsl(${hue}, 70%, 50%)`;
+                dataUsageProgressBar.setAttribute('aria-valuenow', percentageUsed * 100);
+            }
             
-            function renderHistory() {
+            function renderHistory(activePlan) {
                 historyLogContainer.innerHTML = '';
-                const historyToShow = state.history.slice(1);
+                const historyToShow = activePlan.history.slice(1); 
+                
                 if (historyToShow.length === 0) {
                     historyLogContainer.innerHTML = '<p class="text-body-secondary">No updates logged yet.</p>'; return;
                 }
@@ -509,10 +845,9 @@
                     const date = new Date(entry.date);
                     const item = document.createElement('div');
                     item.className = 'list-group-item d-flex justify-content-between align-items-center bg-transparent px-0';
-                    const remainingValue = convertToUnit(entry.remaining);
-                    const displayValue = `${remainingValue.toFixed(state.unit === 'MB' ? 0 : 2)} ${state.unit}`;
+                    const displayValue = convertToUnit(entry.remaining);
                     item.innerHTML = `<div class="me-auto">
-                            <div class="fw-bold">Updated to ${displayValue}</div>
+                            <div class="fw-bold">Updated to ${displayValue} ${state.unit}</div>
                             <small class="text-body-secondary">${date.toLocaleString()}</small>
                         </div>
                         <button class="btn btn-sm btn-outline-danger border-0">
@@ -530,47 +865,158 @@
                     gridColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
                     textColor: isDarkMode ? '#dee2e6' : '#212529',
                     primaryColor: '#0d6efd',
+                    primaryColorTransparent: 'rgba(13, 110, 253, 0.15)',
                     secondaryColor: '#6c757d',
+                    dangerColor: '#dc3545',
+                    dangerColorTransparent: 'rgba(220, 53, 69, 0.15)',
                     bodyColor: isDarkMode ? '#2b3035' : '#ffffff'
                 };
             }
             
-            function renderCharts(dataUsedGB, dataRemainingGB) {
-                if (typeof Chart === 'undefined') {
-                    console.error("Chart.js is not loaded. Skipping chart rendering.");
-                    return;
-                }
+            // Animated Prediction Line is handled here
+            function renderCharts(activePlan, dataUsedGB, dataRemainingGB, depletionDate) {
+                if (typeof Chart === 'undefined') return;
 
                 const colors = getChartColors();
+                
+                // --- Usage Trend Chart ---
+                const historyLabels = activePlan.history.map(h => new Date(h.date).toLocaleDateString());
+                const historyData = activePlan.history.map(h => convertToUnit(h.remaining));
+                
+                // Prediction Line Data
+                const predictionLabels = [...historyLabels];
+                const predictionData = new Array(historyData.length - 1).fill(null);
+                predictionData.push(historyData.at(-1)); // Start from last data point
+
+                if (depletionDate) {
+                    const depletionDateStr = depletionDate.toLocaleDateString();
+                    if (!predictionLabels.includes(depletionDateStr)) {
+                        predictionLabels.push(depletionDateStr);
+                    }
+                    const depletionIndex = predictionLabels.indexOf(depletionDateStr);
+                    while (predictionData.length < depletionIndex + 1) {
+                        predictionData.push(null);
+                    }
+                    predictionData[depletionIndex] = 0; // Plot to zero
+                }
                 
                 if (usageTrendChart) usageTrendChart.destroy();
                 usageTrendChart = new Chart(usageTrendCtx, {
                     type: 'line',
                     data: {
-                        labels: state.history.map(h => new Date(h.date).toLocaleDateString()),
+                        labels: predictionLabels, 
                         datasets: [{
                             label: `Remaining Data (${state.unit})`,
-                            data: state.history.map(h => convertToUnit(h.remaining)),
+                            data: historyData,
                             borderColor: colors.primaryColor,
-                            backgroundColor: 'rgba(13, 110, 253, 0.15)',
+                            backgroundColor: colors.primaryColorTransparent,
                             fill: true,
                             tension: 0.4
+                        },
+                        {
+                            label: 'Prediction',
+                            data: predictionData,
+                            borderColor: colors.dangerColor,
+                            backgroundColor: colors.dangerColorTransparent,
+                            borderDash: [5, 5], // Dotted line
+                            fill: false,
+                            tension: 0.1,
+                            pointRadius: 0
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, animation: { duration: 1000 }, scales: { y: { beginAtZero: false, grid: { color: colors.gridColor }, ticks: { color: colors.textColor } }, x: { grid: { display: false }, ticks: { color: colors.textColor } } }, plugins: { legend: { display: false } } }
+                    options: { responsive: true, maintainAspectRatio: false, animation: { duration: 1000 }, scales: { y: { beginAtZero: false, grid: { color: colors.gridColor }, ticks: { color: colors.textColor } }, x: { grid: { display: false }, ticks: { color: colors.textColor } } }, plugins: { legend: { display: true, labels: { color: colors.textColor } } } }
                 });
 
+                // --- Burn Rate Chart ---
                 if (burnRateChart) burnRateChart.destroy();
                 burnRateChart = new Chart(burnRateCtx, {
                     type: 'doughnut',
                     data: {
                         labels: [`Used (${state.unit})`, `Remaining (${state.unit})`],
-                        datasets: [{ data: [convertToUnit(dataUsedGB), convertToUnit(dataRemainingGB)], backgroundColor: [colors.secondaryColor, colors.primaryColor], borderColor: colors.bodyColor, borderWidth: 5 }]
+                        datasets: [{ data: [convertToUnit(dataUsedGB, 2), convertToUnit(dataRemainingGB, 2)], backgroundColor: [colors.secondaryColor, colors.primaryColor], borderColor: colors.bodyColor, borderWidth: 5 }]
                     },
                     options: { responsive: true, maintainAspectRatio: false, cutout: '70%', animation: { animateRotate: true, animateScale: true, duration: 1200 }, plugins: { legend: { position: 'bottom', labels: { color: colors.textColor } } } }
                 });
             }
 
+            // --- Reports Modal Functions ---
+            function renderReports() {
+                renderPlanRecommendation();
+                renderYearlyChart();
+            }
+
+            // Plan Recommendation (Last 3 Months)
+            function renderPlanRecommendation() {
+                const now = Date.now();
+                const threeMonthsAgo = new Date(now).setMonth(new Date().getMonth() - 3);
+                
+                // Find plans that started within the last 3 months
+                const recentPlans = state.plans.filter(p => p.startDate >= threeMonthsAgo);
+
+                if (recentPlans.length < 1) {
+                    planRecommendationEl.textContent = "Not enough data from the last 3 months to make a recommendation. Check back later!";
+                    return;
+                }
+
+                const totalUsage = recentPlans.reduce((sum, plan) => {
+                    // Use full cycle data if available, otherwise project based on current usage
+                    const elapsedDays = (Math.min(now, plan.startDate + plan.cycleDays * ONE_DAY_MS) - plan.startDate) / ONE_DAY_MS;
+                    const dataUsed = plan.initialTotalData - plan.history.at(-1).remaining;
+                    const avgDaily = (elapsedDays > 0) ? (dataUsed / elapsedDays) : 0;
+                    const projectedTotalUsage = avgDaily * plan.cycleDays;
+                    return sum + projectedTotalUsage;
+                }, 0);
+
+                const avgUsage = totalUsage / recentPlans.length;
+                const recommendedPlan = Math.ceil(avgUsage * 1.20 / 5) * 5; // Recommend 20% buffer, rounded up to nearest 5GB
+
+                planRecommendationEl.innerHTML = `Based on ${recentPlans.length} plan(s) in the last 3 months, your average projected monthly usage is <strong>${avgUsage.toFixed(1)} GB</strong>. 
+                    We recommend a plan of at least <strong>${recommendedPlan} GB</strong> to provide a comfortable buffer.`;
+            }
+
+            // 1-Year Usage History Chart
+            function renderYearlyChart() {
+                const colors = getChartColors();
+                const oneYearAgo = new Date().setFullYear(new Date().getFullYear() - 1);
+
+                const yearlyPlans = state.plans
+                    .filter(p => p.startDate >= oneYearAgo)
+                    .sort((a,b) => a.startDate - b.startDate);
+                
+                const labels = yearlyPlans.map(p => p.planName); // Use plan name for label
+                const data = yearlyPlans.map(p => {
+                    const dataUsed = p.initialTotalData - p.history.at(-1).remaining;
+                    return dataUsed.toFixed(2);
+                });
+
+                if (yearlyUsageChart) yearlyUsageChart.destroy();
+                yearlyUsageChart = new Chart(yearlyUsageCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Total GB Consumed',
+                            data: data,
+                            backgroundColor: colors.primaryColorTransparent,
+                            borderColor: colors.primaryColor,
+                            borderWidth: 2
+                        }]
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        scales: { 
+                            y: { title: { display: true, text: 'GB Consumed', color: colors.textColor }, grid: { color: colors.gridColor }, ticks: { color: colors.textColor } }, 
+                            x: { grid: { display: false }, ticks: { color: colors.textColor } } 
+                        }, 
+                        plugins: { 
+                            legend: { display: false } 
+                        } 
+                    }
+                });
+            }
+
+            // --- THEME & EXPORT ---
             function applyTheme(theme) {
                 document.documentElement.dataset.bsTheme = theme;
                 const icon = themeToggleButton.querySelector('i');
@@ -581,58 +1027,79 @@
 
             function handleThemeToggle() {
                 applyTheme(state.theme === 'dark' ? 'light' : 'dark');
-                if (state.startDate) updateUI();
+                if (state.plans.length > 0) updateUI(); // Redraw charts
             }
 
             function exportToCSV() {
-                if (state.history.length <= 1) { alert('No history to export.'); return; }
+                const activePlan = getActivePlan();
+                if (!activePlan || activePlan.history.length <= 1) { alert('No history to export for this plan.'); return; }
+                
                 let csvContent = "data:text/csv;charset=utf-8,Date,Time,Remaining GB\n";
-                state.history.slice(1).forEach(entry => {
+                activePlan.history.slice(1).forEach(entry => {
                     const d = new Date(entry.date);
                     csvContent += `${d.toLocaleDateString()},${d.toLocaleTimeString()},${entry.remaining.toFixed(2)}\n`;
                 });
+                
                 const link = document.createElement("a");
+                const planNameSafe = activePlan.planName.replace(/[^a-z0-9]/gi, '_');
                 link.setAttribute("href", encodeURI(csvContent));
-                link.setAttribute("download", "data_usage_history.csv");
+                link.setAttribute("download", `data_usage_${planNameSafe}.csv`);
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
             }
             
-            planForm.addEventListener('submit', startPlan);
+            // --- EVENT LISTENERS ---
+            
+            planForm.addEventListener('submit', addNewPlan);
             usageForm.addEventListener('submit', updateRemainingData);
-            resetButton.addEventListener('click', resetPlan);
+            resetButton.addEventListener('click', deleteCurrentPlan);
             themeToggleButton.addEventListener('click', handleThemeToggle);
-            alertThresholdInput.addEventListener('change', (e) => {
-                state.alertThreshold = parseFloat(e.target.value);
+            addNewPlanBtn.addEventListener('click', showSetup);
+            
+            planSelector.addEventListener('change', (e) => {
+                state.activePlanId = parseInt(e.target.value);
                 saveState();
-                updateAlerts(state.history.at(-1).remaining);
+                updateUI();
             });
+
             unitToggleSwitch.addEventListener('change', (e) => {
                 state.unit = e.target.checked ? 'MB' : 'GB';
                 saveState();
                 updateUI();
             });
+
             startDateInput.addEventListener('change', (e) => {
+                const activePlan = getActivePlan();
+                if (!activePlan) return;
+
                 const newDate = new Date(e.target.value);
                 if (newDate > new Date()) {
                     alert("Start date cannot be in the future.");
-                    startDateInput.value = new Date(state.startDate).toISOString().split('T')[0];
+                    startDateInput.value = new Date(activePlan.startDate).toISOString().split('T')[0];
                     return;
                 }
                 const newTimestamp = newDate.getTime();
-                state.startDate = newTimestamp;
-                if (state.history.length > 0) state.history[0].date = newTimestamp;
-                state.history.sort((a, b) => a.date - b.date);
+                activePlan.startDate = newTimestamp;
+                if (activePlan.history.length > 0) activePlan.history[0].date = newTimestamp;
+                activePlan.history.sort((a, b) => a.date - b.date);
+                
+                // Update the plan ID to match its new start date
+                const oldId = activePlan.id;
+                activePlan.id = newTimestamp;
+                state.activePlanId = newTimestamp;
+                
                 saveState();
                 updateUI();
             });
+
             exportCsvBtn.addEventListener('click', exportToCSV);
             
             initializeApp();
         });
     </script>
 
+    <!-- Service Worker -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
